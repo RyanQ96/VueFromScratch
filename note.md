@@ -1,0 +1,1 @@
+- npm feature: when install bootstrap -> install animate.css automatically (goast dependencies)

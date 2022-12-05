@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script src="./reactivity.global.js"></script> 
+  <!-- <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script> -->
+  <div id="app">
+
+  </div>
+  <script>
+
+    // Requirement2: cache the result after proxy
+    const {effect, reactive} = VueReactivity
+    const obj = {name: 'rui', age: 26, address: {num: 30}}
+    const state1 = reactive(obj) // only address
+    const state2 = reactive(state1)
+    // Requirement1: Intercepting properties nad listen to user actions
+    // Requirement: effect will execute once at the begining and whenever data changes
+
+
+    // Requirement3: 
+
+    console.log(state1 === state2)
+    
+
+
+    console.log(state.address)
+  </script>
+
+</body>
+</html>
