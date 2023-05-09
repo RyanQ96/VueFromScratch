@@ -25,50 +25,88 @@ var VueReactivity = (() => {
   });
 
   // packages/reactivity/src/effect.ts
+  var activeEffect = void 0;
+  var ReactiveEffect = class {
+    constructor(fn) {
+      this.active = true;
+      this.parent = null;
+      this.deps = /* @__PURE__ */ new Set();
+      this.fn = fn;
+    }
+    run() {
+      if (!this.active) {
+        return this.fn();
+      } else {
+        try {
+          this.parent = activeEffect;
+          activeEffect = this;
+          this.fn();
+        } finally {
+          activeEffect = this.parent;
+          this.parent = null;
+        }
+      }
+    }
+  };
   function effect(fn) {
     const _effect = new ReactiveEffect(fn);
     _effect.run();
   }
-  var ReactiveEffect = class {
-    constructor(fn) {
-      this.fn = fn;
-      this.active = true;
+  var targetMap = /* @__PURE__ */ new WeakMap();
+  function track(target, key) {
+    if (activeEffect) {
+      let depsMap = targetMap.get(target);
+      if (!depsMap) {
+        targetMap.set(target, depsMap = /* @__PURE__ */ new Map());
+      }
+      let deps = depsMap.get(key);
+      if (!deps) {
+        depsMap.set(key, deps = /* @__PURE__ */ new Set());
+      }
+      const shouldTrack = !deps.has(activeEffect);
+      if (shouldTrack) {
+        deps.add(activeEffect);
+        if (!activeEffect.deps.has(deps)) {
+          activeEffect.deps.add(deps);
+        }
+      }
     }
-    run() {
-      this.fn();
-    }
+  }
+  function trigger(target, key, value) {
+    let depsMap = targetMap.get(target);
+    if (!depsMap)
+      return;
+    const effects = depsMap.get(key);
+    effects && effects.forEach((effect2) => {
+      effect2.run();
+    });
+  }
+
+  // packages/shared/src/index.ts
+  var isObject = (value) => {
+    return typeof value === "object" && value !== null;
   };
 
-  // node_modules/.pnpm/@vue+shared@3.2.45/node_modules/@vue/shared/dist/shared.esm-bundler.js
-  function makeMap(str, expectsLowerCase) {
-    const map = /* @__PURE__ */ Object.create(null);
-    const list = str.split(",");
-    for (let i = 0; i < list.length; i++) {
-      map[list[i]] = true;
+  // packages/reactivity/src/baseHandler.ts
+  var baseHandler = {
+    get(target, key, receiver) {
+      if (key === "__v_isReactive" /* IS_REACTIVE */) {
+        return true;
+      } else {
+        track(target, key);
+        console.log(`logging: collect dependency for key: ${String(key)}`);
+        return Reflect.get(target, key, receiver);
+      }
+    },
+    set(target, key, value, receiver) {
+      let oldValue = target[key];
+      if (oldValue != value) {
+        let result = Reflect.set(target, key, value, receiver);
+        trigger(target, key, value);
+        return result;
+      }
     }
-    return expectsLowerCase ? (val) => !!map[val.toLowerCase()] : (val) => !!map[val];
-  }
-  var specialBooleanAttrs = `itemscope,allowfullscreen,formnovalidate,ismap,nomodule,novalidate,readonly`;
-  var isBooleanAttr = /* @__PURE__ */ makeMap(specialBooleanAttrs + `,async,autofocus,autoplay,controls,default,defer,disabled,hidden,loop,open,required,reversed,scoped,seamless,checked,muted,multiple,selected`);
-  var EMPTY_OBJ = true ? Object.freeze({}) : {};
-  var EMPTY_ARR = true ? Object.freeze([]) : [];
-  var isArray = Array.isArray;
-  var isObject = (val) => val !== null && typeof val === "object";
-  var cacheStringFunction = (fn) => {
-    const cache = /* @__PURE__ */ Object.create(null);
-    return (str) => {
-      const hit = cache[str];
-      return hit || (cache[str] = fn(str));
-    };
   };
-  var camelizeRE = /-(\w)/g;
-  var camelize = cacheStringFunction((str) => {
-    return str.replace(camelizeRE, (_, c) => c ? c.toUpperCase() : "");
-  });
-  var hyphenateRE = /\B([A-Z])/g;
-  var hyphenate = cacheStringFunction((str) => str.replace(hyphenateRE, "-$1").toLowerCase());
-  var capitalize = cacheStringFunction((str) => str.charAt(0).toUpperCase() + str.slice(1));
-  var toHandlerKey = cacheStringFunction((str) => str ? `on${capitalize(str)}` : ``);
 
   // packages/reactivity/src/reactive.ts
   var reactiveMap = /* @__PURE__ */ new WeakMap();
@@ -80,22 +118,10 @@ var VueReactivity = (() => {
       return target;
     }
     const existing = reactiveMap.get(target);
-    if (existing)
+    if (existing) {
       return existing;
-    const proxy = new Proxy(target, {
-      get(target2, key, receiver) {
-        if (key === "__v_isReactive" /* IS_REACTIVE */) {
-          return true;
-        }
-        console.log("Here we can record which effect is using this property ");
-        return Reflect.get(target2, key, receiver);
-      },
-      set(target2, key, value, receiver) {
-        console.log("Here can notify effect to re-evaluate");
-        target2[key] = value;
-        return Reflect.set(target2, key, value, receiver);
-      }
-    });
+    }
+    const proxy = new Proxy(target, baseHandler);
     reactiveMap.set(target, proxy);
     return proxy;
   }

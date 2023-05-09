@@ -1,6 +1,5 @@
 const args = require('minimist')(process.argv.slice(2)) // minimist interpret parameter
 const path = require('path')
-
 const target = args._[0] || 'reactivity'
 
 const format = args.f || 'global'
@@ -15,9 +14,9 @@ const pkg = require(path.resolve(__dirname, `../packages/${target}/package.json`
 
 const outputFormat = format.startsWith('global') 
   ? 'iife' 
-  : format.startsWith('cjs') 
+  : format.startsWith('cjs') // common js
     ? 'cjs'
-    : 'esm'
+    : 'esm' // es6
 
 const outfile = path.resolve(__dirname, `../packages/${target}/dist/${target}.${format}.js`)
 
@@ -28,6 +27,7 @@ build({
   outfile, 
   bundle: true, 
   sourcemap: true, // what is sourcemap
+  format: outputFormat, 
   globalName: pkg.buildOptions?.name, 
   platform: format === 'cjs' ? 'node': 'browser', 
   watch: { // 监控文件变化

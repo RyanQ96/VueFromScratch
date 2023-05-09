@@ -25,12 +25,10 @@
       app.innerHTML = state.name +", " + state.age + ", " + state.address.num
     })
 
-
-    
-    
-
-
-    console.log(state.address)
+    setTimeout(() => {
+      state.age = 10000
+      state.address.num=40
+    }, 1000);
   </script>
 
 </body>
