@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <!-- <script src="./reactivity.global.js"></script>  -->
+  <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script>
+  <div id="app">
+
+  </div>
+  <script>
+    const {ref, effect, toRefs} = VueReactivity
+    const age = ref(1)
+    const person = ref({name1: 1, age1: 2})
+    const refList = ref([1,2,3,4])
+    effect(() => {
+      app.innerHTML = age.value + ", " + person.value.name1 + "-" + refList.value[2]
+      console.log(refList)
+    })
+    setTimeout(() => {
+      age.value ++;  
+    }, 1000);
+    setTimeout(() => {
+      person.value.name1 ++ 
+    }, 2000);
+    setTimeout(() => {
+      console.log(123)
+      refList.value.push(999)
+    }, 3000);
+    console.log(age)
+    console.log(person)
+    const check = toRefs(person) 
+    console.log(check)
+  </script>
+
+</body>
+</html>

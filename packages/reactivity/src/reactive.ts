@@ -24,3 +24,6 @@ export function reactive(target) {
   return proxy
 }
 
+export function isReactive(object) {
+  return !!(object && object[ReactiveFlags.IS_REACTIVE])
+}

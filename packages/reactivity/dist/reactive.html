@@ -19,16 +19,22 @@
     const obj = {name: 'rui', age: 26, address: {num: 30}}
     const state1 = reactive(obj) // only address
     const state2 = reactive(state1)
+    const state3 = reactive([1,2,3,4])
     // Requirement1: Intercepting properties nad listen to user actions
     // Requirement: effect will execute once at the begining and whenever data changes
 
 
     // Requirement3: 
     console.log(state1 === state2)
-    
+    effect(() => {
+      app.innerHTML = state3[2]
+      console.log(state3)
+    }) 
 
-
-    console.log(state1.address)
+    setTimeout(() => {
+      state3[2] = 100
+    }, 1000);
+    console.log(state3)
   </script>
 
 </body>

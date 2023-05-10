@@ -20,14 +20,18 @@ var VueReactivity = (() => {
   // packages/reactivity/src/index.ts
   var src_exports = {};
   __export(src_exports, {
+    computed: () => computed,
     effect: () => effect,
-    reactive: () => reactive
+    reactive: () => reactive,
+    ref: () => ref,
+    watch: () => watch
   });
 
   // packages/reactivity/src/effect.ts
   var activeEffect = void 0;
   var ReactiveEffect = class {
-    constructor(fn) {
+    constructor(fn, scheduler) {
+      this.scheduler = scheduler;
       this.active = true;
       this.parent = null;
       this.deps = /* @__PURE__ */ new Set();
@@ -38,19 +42,36 @@ var VueReactivity = (() => {
         return this.fn();
       } else {
         try {
+          cleanEffect(this);
           this.parent = activeEffect;
           activeEffect = this;
-          this.fn();
+          return this.fn();
         } finally {
           activeEffect = this.parent;
           this.parent = null;
         }
       }
     }
+    stop() {
+      if (this.active) {
+        this.active = false;
+        cleanEffect(this);
+      }
+    }
   };
-  function effect(fn) {
-    const _effect = new ReactiveEffect(fn);
+  function cleanEffect(effect2) {
+    console.log("effect cleaned");
+    effect2.deps.forEach((deps) => {
+      deps.delete(effect2);
+    });
+    effect2.deps.clear();
+  }
+  function effect(fn, options = {}) {
+    const _effect = new ReactiveEffect(fn, options.scheduler);
     _effect.run();
+    const runner = _effect.run.bind(_effect);
+    runner.effect = _effect;
+    return runner;
   }
   var targetMap = /* @__PURE__ */ new WeakMap();
   function track(target, key) {
@@ -63,12 +84,15 @@ var VueReactivity = (() => {
       if (!deps) {
         depsMap.set(key, deps = /* @__PURE__ */ new Set());
       }
-      const shouldTrack = !deps.has(activeEffect);
-      if (shouldTrack) {
-        deps.add(activeEffect);
-        if (!activeEffect.deps.has(deps)) {
-          activeEffect.deps.add(deps);
-        }
+      trackEffect(deps);
+    }
+  }
+  function trackEffect(deps) {
+    const shouldTrack = !deps.has(activeEffect);
+    if (shouldTrack) {
+      deps.add(activeEffect);
+      if (!activeEffect.deps.has(deps)) {
+        activeEffect.deps.add(deps);
       }
     }
   }
@@ -77,14 +101,26 @@ var VueReactivity = (() => {
     if (!depsMap)
       return;
     const effects = depsMap.get(key);
-    effects && effects.forEach((effect2) => {
-      effect2.run();
+    triggerEffects(effects);
+  }
+  function triggerEffects(effects) {
+    effects && Array.from(effects).forEach((effect2) => {
+      if (effect2 !== activeEffect) {
+        if (effect2.scheduler) {
+          effect2.scheduler();
+        } else {
+          effect2.run();
+        }
+      }
     });
   }
 
   // packages/shared/src/index.ts
   var isObject = (value) => {
     return typeof value === "object" && value !== null;
+  };
+  var isFunction = (value) => {
+    return typeof value === "function" && value != null;
   };
 
   // packages/reactivity/src/baseHandler.ts
@@ -94,8 +130,12 @@ var VueReactivity = (() => {
         return true;
       } else {
         track(target, key);
-        console.log(`logging: collect dependency for key: ${String(key)}`);
-        return Reflect.get(target, key, receiver);
+        let res = Reflect.get(target, key, receiver);
+        if (isObject(res)) {
+          return reactive(res);
+        } else {
+          return res;
+        }
       }
     },
     set(target, key, value, receiver) {
@@ -124,6 +164,115 @@ var VueReactivity = (() => {
     const proxy = new Proxy(target, baseHandler);
     reactiveMap.set(target, proxy);
     return proxy;
+  }
+  function isReactive(object) {
+    return !!(object && object["__v_isReactive" /* IS_REACTIVE */]);
+  }
+
+  // packages/reactivity/src/computed.ts
+  var ComputedRefImpl = class {
+    constructor(getter, setter) {
+      this.getter = getter;
+      this.setter = setter;
+      this._dirty = true;
+      this.deps = /* @__PURE__ */ new Set();
+      this._effect = new ReactiveEffect(getter, () => {
+        if (!this._dirty) {
+          this._dirty = true;
+          triggerEffects(this.deps);
+        }
+      });
+    }
+    get value() {
+      trackEffect(this.deps);
+      if (this._dirty) {
+        this._value = this._effect.run();
+        this._dirty = false;
+      }
+      return this._value;
+    }
+    set value(newValue) {
+      this.setter(newValue);
+    }
+  };
+  function computed(getterOrOptions) {
+    let getter;
+    let setter;
+    let isGetter = isFunction(getterOrOptions);
+    const fn = () => console.warn("computed is read only");
+    if (isGetter) {
+      getter = getterOrOptions;
+      setter = () => fn;
+    } else {
+      getter = getterOrOptions.getter;
+      setter = getterOrOptions.setter || fn;
+    }
+    return new ComputedRefImpl(getter, setter);
+  }
+
+  // packages/reactivity/src/watch.ts
+  function traverse(value, set = /* @__PURE__ */ new Set()) {
+    if (!isObject)
+      return value;
+    if (set.has(value))
+      return;
+    set.add(value);
+    for (let key in value) {
+      traverse(value[key], set);
+    }
+    return value;
+  }
+  function watch(source, cb) {
+    let getter;
+    if (isReactive(source)) {
+      getter = () => traverse(source);
+    } else if (isFunction(source)) {
+      getter = source;
+    } else {
+      console.warn("source is not an reactive object or a function");
+      return;
+    }
+    let oldValue;
+    let waiting = false;
+    const job = () => {
+      if (!waiting) {
+        waiting = true;
+        Promise.resolve().then(() => {
+          const newValue = effect2.run();
+          cb(newValue, oldValue);
+          oldValue = newValue;
+          waiting = false;
+        });
+      }
+    };
+    const effect2 = new ReactiveEffect(getter, job);
+    oldValue = effect2.run();
+  }
+
+  // packages/reactivity/src/ref.ts
+  function toReactive(value) {
+    return isObject(value) ? reactive(value) : value;
+  }
+  var RefImpl = class {
+    constructor(value) {
+      this.deps = /* @__PURE__ */ new Set();
+      this._value = toReactive(value);
+      this.rawValue = value;
+    }
+    get value() {
+      trackEffect(this.deps);
+      return this._value;
+    }
+    set value(newVal) {
+      if (newVal !== this._value) {
+        this._value = toReactive(newVal);
+        this.rawValue = newVal;
+        triggerEffects(this.deps);
+      }
+    }
+  };
+  function ref(val) {
+    return new RefImpl(val);
   }
   return __toCommonJS(src_exports);
 })();
