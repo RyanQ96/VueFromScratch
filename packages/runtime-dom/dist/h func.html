@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+   <!-- <script src="./runtime-dom.global.js"></script>  -->
+   <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+   <script src="./runtime-dom.global.js"></script>
+   <script type="module">
+    const {createRenderer, h, createVNode} = VueRuntimeDOM // use default render provided if one doesn't want to customize
+    // h function will call createVNode
+    // 1) element, content
+    // 2) element, props, content
+    // 3) element, props, children
+    // 4) element, children
+    console.log(h("h1", "Hello World")) 
+    // h(类型, 元素对象)
+    console.log(h("h1", h("h2", "Hello World")))
+
+    console.log(h("h1", {}, 'hello'))
+   </script>
+</body>
+</html>

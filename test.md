@@ -1,0 +1,7 @@
+ment $d_i$, where $j$ ranges from $1$ to $M$ and $M$ is the total number of extracted entities.
+
+The next phase in this process is the creation of a knowledge graph $\mathcal{G} = (V, E)$. $V$ represents the set of nodes in the graph, and $E$ represents the set of edges. Initially, $\mathcal{G}$ is empty. However, as users explore the corpus $\mathcal{C}$ through various perspectives (e.g., population studied, intervention methods, etc.), entities $E_j$ are extracted and embedded into $\mathcal{G}$ as nodes $v_l$, where $l$ ranges from $1$ to $V$, and $V$ is the total number of nodes in $\mathcal{G}$.
+
+Relations $R_k$ between entities are also identified during the exploration, where $k$ ranges from $1$ to $P$ and $P$ is the total number of identified relations. These relations $R_k$ are embedded into $\mathcal{G}$ as edges $e_m$, where $m$ ranges from $1$ to $E$, and $E$ is the total number of edges in $\mathcal{G}$.
+
+The continuous exploration of $\mathcal{C}$ leads to the growth of $\mathcal{G}$, embodying the expansion of the user's knowledge about the topic at hand. This evolving knowledge graph $\mathcal{G}$ offers a knowledge synthesis or summary of the corpus based on the user's interest. Simultaneously, it provides a tool to identify knowledge gaps, such as missing studies, by identifying missing links within $\mathcal{G}$. This visual and interactive tool hence supports the iterative process of information seeking and knowledge gap identification.
